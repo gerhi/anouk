@@ -1,6 +1,6 @@
 # ANOUK
 
-**A**uswahlbasierte **N**utzenmessung: **O**nline-**U**msetzung & **K**alkulation (choice-based utility measurement: online presentation and calculation). A web application that shows respondents the choice tasks of a choice-based conjoint (CBC) study, built as a companion to LimeSurvey. The choice sets are created in R with `cbcTools`. It needs PHP and a MySQL/MariaDB database, so it runs on ordinary shared web hosting that also runs LimeSurvey.
+**A** **N**neat: **O**nline-**U**tility & **K**it (choice-based utility measurement: online presentation and calculation). A web application that shows respondents the choice tasks of a choice-based conjoint (CBC) study, built as a companion to LimeSurvey. The choice sets are created in R with `cbcTools`. It needs PHP and a MySQL/MariaDB database, so it runs on ordinary shared web hosting that also runs LimeSurvey.
 
 Deutsche Fassung: `README.de.md`
 
