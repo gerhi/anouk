@@ -1,18 +1,18 @@
 <?php
 /**
- * ANOUK web installer: connection test, tables, administrator, config.php.
- * Once config.php exists, the installer only offers to delete itself or – with the
- * emergency code shown at installation – to delete config.php for a fresh setup.
+ * ANOUK web installer: connection test, table prefix, tables, administrator, config.php,
+ * lock file data/install.lock. Once installed, the installer only offers to delete itself
+ * or – with the emergency code shown at installation – to delete config.php for a fresh setup.
  */
 declare(strict_types=1);
 
-require __DIR__ . '/app/bootstrap.php';
+require __DIR__ . '/src/bootstrap.php';
 
 anouk_security_headers();
 
 // Language: ?lang=xx or the hidden form field, else cookie or browser.
 $lang = (string)($_POST['lang'] ?? $_GET['lang'] ?? '');
-isset(ANOUK_LANGS[$lang]) ? i18n_set($lang) : i18n_init();
+lang_exists($lang) ? i18n_set($lang) : i18n_init();
 
 $action = is_string($_POST['action'] ?? null) ? $_POST['action'] : '';
 $errors = [];
@@ -22,6 +22,7 @@ $done = false;
 $manualConfig = null;
 $resetCode = null;
 $existingUsers = 0;
+$lockWritten = true;
 
 $f = fn(string $k, string $d = ''): string => trim(is_string($_POST[$k] ?? null) ? $_POST[$k] : $d);
 
@@ -29,13 +30,14 @@ $f = fn(string $k, string $d = ''): string => trim(is_string($_POST[$k] ?? null)
 if (is_file(Installer::configFile())) {
     if ($action === 'delete_installer') {
         if (Installer::deleteInstaller()) {
-            header('Location: index.php', true, 303);
+            header('Location: admin/index.php', true, 303);
             exit;
         }
         $errors[] = t('install.php could not be deleted. Delete it by FTP.');
     } elseif ($action === 'reset_config') {
         if (Installer::checkResetCode($f('reset_code'))) {
             if (Installer::deleteConfig()) {
+                Installer::deleteLock();
                 $notice = t('config.php has been deleted. ANOUK can now be set up again; the data in the database are kept.');
             } else {
                 $errors[] = t('config.php could not be deleted. Delete it by FTP.');
@@ -46,7 +48,8 @@ if (is_file(Installer::configFile())) {
         }
     }
 }
-$locked = is_file(Installer::configFile());
+$locked = Installer::locked();
+$lockOnly = $locked && !is_file(Installer::configFile());
 
 // ------------------------------------------------------------------ not installed: test / install
 $dbHost = $f('db_host', 'localhost');
@@ -54,6 +57,7 @@ $dbPort = $f('db_port', '3306');
 $dbName = $f('db_name');
 $dbUser = $f('db_user');
 $dbPass = is_string($_POST['db_pass'] ?? null) ? $_POST['db_pass'] : '';
+$dbPrefix = $f('db_prefix', Db::DEFAULT_PREFIX);
 $forceHttps = $action ? isset($_POST['force_https']) : is_https();
 
 if (!$locked && in_array($action, ['test', 'install'], true)) {
@@ -61,9 +65,11 @@ if (!$locked && in_array($action, ['test', 'install'], true)) {
         $errors[] = t('Enter the database name and user.');
     } elseif (!preg_match('/^[A-Za-z0-9._-]+$/', $dbHost) || !preg_match('/^\d{1,5}$/', $dbPort) || !preg_match('/^[A-Za-z0-9_$-]+$/', $dbName)) {
         $errors[] = t('Host, port or database name contain invalid characters.');
+    } elseif (!Db::validPrefix($dbPrefix)) {
+        $errors[] = t('The table prefix may contain lower-case letters, digits and underscores, starting with a letter (at most 20 characters).');
     } else {
         $dsn = Installer::dsn($dbHost, $dbPort, $dbName);
-        $test = Installer::testConnection($dsn, $dbUser, $dbPass);
+        $test = Installer::testConnection($dsn, $dbUser, $dbPass, $dbPrefix);
         $existingUsers = $test['users'];
 
         if ($action === 'install' && $test['ok']) {
@@ -83,12 +89,14 @@ if (!$locked && in_array($action, ['test', 'install'], true)) {
             if (!$errors) {
                 try {
                     Db::setPdo($test['pdo']);
-                    Installer::runSchema($test['pdo']);
-                    Schema::ensure();
                     if ($existingUsers === 0) {
+                        Installer::runSchema($test['pdo']);
+                        Migrator::markInstalled();
                         Auth::createUser($name, $email, 'admin', $pw, i18n_lang());
                     }
-                    [$manualConfig, $resetCode] = Installer::writeConfig($dsn, $dbUser, $dbPass, $forceHttps);
+                    // An existing database keeps its data; pending updates are offered after login.
+                    [$manualConfig, $resetCode] = Installer::writeConfig($dsn, $dbUser, $dbPass, $forceHttps, $dbPrefix);
+                    $lockWritten = Installer::writeLock();
                     $done = true;
                 } catch (PDOException $e) {
                     $errors[] = t('Database error: %s', $e->getMessage());
@@ -104,6 +112,7 @@ $checks = [
     [t('PHP extension pdo_mysql'), extension_loaded('pdo_mysql'), true],
     [t('PHP extension mbstring'), extension_loaded('mbstring'), true],
     [t('Folder writable (for config.php)'), is_writable(ANOUK_ROOT), false],
+    [t('Folder data/ writable (for the lock file)'), is_writable(Installer::dataDir()), false],
     [t('HTTPS'), is_https(), false],
 ];
 $blocked = (bool)array_filter($checks, fn($c) => $c[2] && !$c[1]);
@@ -115,14 +124,14 @@ $blocked = (bool)array_filter($checks, fn($c) => $c[2] && !$c[1]);
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title><?= te('ANOUK: installation') ?></title>
-<link rel="stylesheet" href="assets/style.css?v=<?= h(ANOUK_VERSION) ?>">
-<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/style.css?v=<?= h(ANOUK_VERSION) ?>">
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 </head>
 <body class="plain">
 <header class="topbar">
   <span class="brand"><span class="bubble" aria-hidden="true">≻</span><?= te('ANOUK: installation') ?></span>
   <nav class="lang-row" aria-label="<?= te('Language') ?>">
-    <?php foreach (ANOUK_LANGS as $code => $name): ?>
+    <?php foreach (anouk_langs() as $code => $name): ?>
       <a href="?lang=<?= h($code) ?>" lang="<?= h($code) ?>"<?= $code === i18n_lang() ? ' aria-current="true"' : '' ?>><?= h($name) ?></a>
     <?php endforeach; ?>
   </nav>
@@ -134,6 +143,10 @@ $blocked = (bool)array_filter($checks, fn($c) => $c[2] && !$c[1]);
 <?php if ($done): ?>
   <h1><?= te('ANOUK is installed') ?></h1>
   <div class="alert alert-success"><?= $existingUsers ? te('ANOUK uses the existing database with %d accounts.', $existingUsers) : te('Tables and administrator account have been created.') ?></div>
+  <?php if ($existingUsers): ?><p><?= te('If this database comes from an older ANOUK version, the administrator is offered a database update after logging in.') ?></p><?php endif; ?>
+  <?php if (!$lockWritten): ?>
+    <div class="alert alert-warning"><?= tm('The lock file <code>data/install.lock</code> could not be written. Delete <code>install.php</code> now, or make the folder <code>data/</code> writable.') ?></div>
+  <?php endif; ?>
   <?php if ($manualConfig !== null): ?>
     <p><?= tm('The folder is not writable. Create a file <code>config.php</code> next to <code>index.php</code> with this content:') ?></p>
     <pre><?= h($manualConfig) ?></pre>
@@ -147,8 +160,12 @@ $blocked = (bool)array_filter($checks, fn($c) => $c[2] && !$c[1]);
   <form method="post" class="actions">
     <?= $langField ?><input type="hidden" name="action" value="delete_installer">
     <button class="btn btn-primary" type="submit"><?= te('Delete install.php and log in') ?></button>
-    <a class="btn" href="index.php"><?= te('Log in without deleting') ?></a>
+    <a class="btn" href="admin/index.php"><?= te('Log in without deleting') ?></a>
   </form>
+
+<?php elseif ($lockOnly): ?>
+  <h1><?= te('Installer locked') ?></h1>
+  <p><?= tm('The installer is locked by <code>data/install.lock</code>, but <code>config.php</code> is missing. To install again, delete <code>data/install.lock</code> by FTP and reload this page. The data in the database are kept.') ?></p>
 
 <?php elseif ($locked): ?>
   <h1><?= te('Already installed') ?></h1>
@@ -157,7 +174,7 @@ $blocked = (bool)array_filter($checks, fn($c) => $c[2] && !$c[1]);
   <form method="post" class="actions">
     <?= $langField ?><input type="hidden" name="action" value="delete_installer">
     <button class="btn btn-primary" type="submit"><?= te('Delete install.php') ?></button>
-    <a class="btn" href="index.php"><?= te('Log in') ?></a>
+    <a class="btn" href="admin/index.php"><?= te('Log in') ?></a>
   </form>
   <details class="help panel section">
     <summary><?= te('Reset the configuration (delete config.php)') ?></summary>
@@ -206,7 +223,8 @@ $blocked = (bool)array_filter($checks, fn($c) => $c[2] && !$c[1]);
         <label><?= te('Database user') ?> <input name="db_user" value="<?= h($dbUser) ?>" required autocomplete="off"></label>
         <label><?= te('Database password') ?> <input type="password" name="db_pass" value="<?= h($dbPass) ?>" autocomplete="new-password"></label>
       </div>
-      <p class="muted small"><?= tm('ANOUK uses its own tables with the prefix <code>anouk_</code> and can share a database with other software.') ?></p>
+      <label><?= te('Table prefix') ?> <input name="db_prefix" value="<?= h($dbPrefix) ?>" required pattern="[a-z][a-z0-9_]{0,19}">
+        <small><?= tm('All ANOUK tables start with this prefix, so ANOUK can share a database with other tools. Keep <code>anouk_</code> unless you run two ANOUK installations in one database. To reuse an existing ANOUK database, enter its prefix.') ?></small></label>
       <button class="btn" type="submit" name="action" value="test" formnovalidate><?= te('Test connection') ?></button>
     </fieldset>
 

@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "ANOUK: Online presentation of choice-based conjoint studies for LimeSurvey and other survey tools"
+abstract: >-
+  ANOUK (Auswahlbasierte Nutzenmessung: Online-Umsetzung & Kalkulation) is a
+  lightweight PHP/MySQL web application that presents the choice tasks of
+  choice-based conjoint studies designed in R with cbcTools. Respondents arrive
+  from a survey tool with their ID and return to the same survey; the data are
+  exported in long and wide format for estimation in R.
+authors:
+  - family-names: Hirschfeld
+    given-names: Gerrit
+    affiliation: "Hochschule Bielefeld (HSBI)"
+    # orcid: "https://orcid.org/XXXX-XXXX-XXXX-XXXX"
+version: 1.1.0
+date-released: 2026-11-19
+license: MIT
+repository-code: "https://github.com/gerhi/anouk"
+keywords:
+  - psychology
+  - survey
+  - research software
+  - conjoint analysis
+  - discrete choice experiment
+  - limesurvey
+  - cbcTools

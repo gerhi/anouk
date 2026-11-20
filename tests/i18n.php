@@ -1,7 +1,8 @@
 <?php
 /**
  * Checks the translations: every string passed to t(), te() or tm() (and the method
- * labels) must have an entry in each app/lang/*.json, and no entry may be unused.
+ * labels) must have an entry in lang/en.php and every other lang/*.php, every survey.* key of
+ * lang/en.php must exist in the other files, and no entry may be unused.
  *   php tests/i18n.php          report
  *   php tests/i18n.php --keys   print all keys as JSON (for adding a language)
  */
@@ -10,12 +11,12 @@ declare(strict_types=1);
 PHP_SAPI === 'cli' or exit; // never run over the web
 
 $root = dirname(__DIR__);
-require $root . '/app/bootstrap.php';
+require $root . '/src/bootstrap.php';
 
 $files = array_merge(
-    glob($root . '/app/*.php'),
-    glob($root . '/app/views/*.php'),
-    glob($root . '/app/views/survey/*.php'),
+    glob($root . '/src/*.php'),
+    glob($root . '/src/views/*.php'),
+    glob($root . '/src/views/survey/*.php'),
     [$root . '/index.php', $root . '/install.php']
 );
 $keys = [];
@@ -59,35 +60,30 @@ if (in_array('--keys', $argv, true)) {
 }
 
 $fail = 0;
-foreach (array_keys(ANOUK_LANGS) as $lang) {
-    if ($lang === 'en') {
-        continue;
-    }
-    $dict = json_decode((string)file_get_contents($root . "/app/lang/$lang.json"), true);
-    if (!is_array($dict)) {
-        echo "app/lang/$lang.json is not valid JSON\n";
-        exit(1);
-    }
-    $missing = array_diff_key($keys, array_filter($dict, fn($v) => $v !== ''));
-    $unused = array_diff_key($dict, $keys);
-    foreach ($missing as $k => $f) {
-        echo "[$lang] missing: $k   ($f)\n";
+$en = i18n_dict('en');
+$surveyKeys = array_filter(array_keys($en), fn($k) => str_starts_with((string)$k, 'survey.'));
+$need = array_fill_keys(array_merge(array_keys($keys), $surveyKeys, ['_name']), true);
+foreach (array_keys(anouk_langs()) as $lang) {
+    $dict = i18n_dict($lang);
+    $missing = array_diff_key($need, array_filter($dict, fn($v) => is_string($v) && $v !== ''));
+    $unused = array_diff_key($dict, $need);
+    foreach ($missing as $k => $_) {
+        echo "[$lang] missing: $k   (" . ($keys[$k] ?? 'survey') . ")\n";
     }
     foreach ($unused as $k => $_) {
         echo "[$lang] unused: $k\n";
     }
-    // placeholders must survive the translation
     foreach ($dict as $k => $v) {
-        preg_match_all('/%(\d+\$)?[sd]/', (string)$k, $a);
+        preg_match_all('/%(\d+\$)?[sd]/', (string)($en[$k] ?? $k), $a);
         preg_match_all('/%(\d+\$)?[sd]/', (string)$v, $b);
         $pa = $a[0]; $pb = $b[0];
         sort($pa); sort($pb);
-        if ($v !== '' && $pa !== $pb) {
+        if ($k !== '_name' && $v !== '' && $pa !== $pb) {
             echo "[$lang] placeholders differ: $k\n";
             $fail++;
         }
     }
     $fail += count($missing) + count($unused);
-    echo "[$lang] " . count($keys) . ' keys, ' . count($missing) . ' missing, ' . count($unused) . " unused\n";
+    echo "[$lang] " . count($need) . ' keys, ' . count($missing) . ' missing, ' . count($unused) . " unused\n";
 }
 exit($fail ? 1 : 0);

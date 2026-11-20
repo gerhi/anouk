@@ -1,269 +1,315 @@
-# ANOUK
+# ANOUK – Choice-based-Conjoint-Studien für LimeSurvey und andere Umfragetools
 
-**A**uswahlbasierte **N**utzenmessung: **O**nline-**U**msetzung & **K**alkulation. Eine Webanwendung, die Probanden die Choice-Tasks einer Choice-Based-Conjoint-Studie (CBC) zeigt, gebaut als Ergänzung zu LimeSurvey. Die Choice-Sets entstehen in R mit `cbcTools`. Sie braucht PHP und eine MySQL/MariaDB-Datenbank und läuft deshalb auf gewöhnlichem Webhosting, auf dem auch LimeSurvey läuft.
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg) ![Version](https://img.shields.io/badge/version-1.1.0-green)
+
+**A**uswahlbasierte **N**utzenmessung: **O**nline-**U**msetzung & **K**alkulation. ANOUK zeigt Befragten die Choice-Tasks einer Choice-based-Conjoint-Studie (CBC), deren Choice-Sets in R mit `cbcTools` geplant wurden. Die Befragten kommen mit ihrer ID aus einem Umfragetool wie LimeSurvey, beantworten die Choice-Tasks und kehren in dieselbe Umfrage zurück. ANOUK läuft auf gewöhnlichem Webspace mit PHP und MySQL.
 
 English version: `README.md`
 
-- **Choice-Sets:** ANOUK schreibt aus den Attributen einer Studie ein R-Skript für `cbcTools`; die erzeugte CSV wird hochgeladen und geprüft
-- **Probanden:** kommen mit ihrer ID aus LimeSurvey, erhalten eine Version des Designs und kehren mit derselben ID in dieselbe Umfrage zurück
-- **Versionen:** jede neue ID erhält die am wenigsten genutzte Version; Versionen von Abbrechern werden nach einer einstellbaren Frist wieder frei
-- **Export:** Langformat mit einer Zeile je Proband × Task × Alternative, direkt nutzbar mit `logitr`, `mlogit` und `bayesm`
-- **Konten:** ein Administrator und beliebig viele Projektleitungen, die jeweils nur ihre eigenen Studien sehen
-- **Sprachen:** Verwaltung und Probandenseiten gibt es auf Englisch und Deutsch
+![Choice-Task auf Smartphone und Desktop](docs/screenshots/survey.png)
 
-Version 1.0.1 · MIT-Lizenz
+## Funktionen
 
-## 1. Installation
+- **Choice-Sets aus R:** ANOUK erstellt aus den Attributen einer Studie ein `cbcTools`-Skript; die erzeugte CSV wird hochgeladen und zeilengenau geprüft
+- **Umfragetools:** Befragte kommen mit ihrer ID aus LimeSurvey, SoSci Survey, Unipark oder Qualtrics und werden mit derselben ID zurückgeschickt
+- **Versionen:** Jede neue ID erhält die am wenigsten genutzte Version des Designs; Versionen von Abbrechenden werden nach einer einstellbaren Zeit wieder frei
+- **Exporte:** Langformat für `logitr`, `mlogit` und `bayesm`, Breitformat zum Zusammenführen mit den Umfragedaten und ein Codebuch
+- **Variablennamen:** kurze, R-taugliche Spaltennamen je Attribut (`preis` statt „Preis pro Monat“), jederzeit änderbar
+- **Konten:** ein Master-Admin und beliebig viele Projektleitungen, die jeweils nur ihre eigenen Studien sehen
+- **Sprachen:** Verwaltung und Befragtenseiten auf Englisch und Deutsch; weitere Sprachen über eine zusätzliche Datei
+- **Updates:** Datenbankänderungen neuer Versionen laufen per Knopfdruck, ohne Shell
 
-1. Im Kundenmenü des Providers eine MySQL- oder MariaDB-Datenbank anlegen und Host, Datenbankname, Benutzer und Passwort notieren. Die Datenbank darf andere Tabellen enthalten; ANOUK nutzt eigene Tabellen mit dem Präfix `anouk_`.
-2. Die Dateien herunterladen (auf GitHub: **Code → Download ZIP**) und entpacken. Den ganzen Ordner per FTP hochladen, z. B. nach `https://example.org/anouk/`. Die `.htaccess`-Dateien mit hochladen (es sind versteckte Dateien).
-3. `https://example.org/anouk/install.php` aufrufen.
-4. Die Datenbankangaben eintragen und auf **Verbindung testen** klicken. Die Seite meldet, ob die Verbindung klappt, ob der Benutzer Tabellen anlegen darf und ob schon eine ANOUK-Datenbank existiert.
-5. Name, E-Mail-Adresse und Passwort (mindestens 10 Zeichen) für das Administrator-Konto eintragen und auf **Installieren** klicken.
-6. Den angezeigten **Notfall-Code** notieren, dann auf **install.php löschen** klicken.
-7. Unter `https://example.org/anouk/` anmelden.
+## Voraussetzungen
 
-Kann der Installer `config.php` nicht schreiben, zeigt er den Inhalt der Datei an; diese dann per FTP anlegen und die Seite neu laden.
+- PHP 8.1 oder neuer mit `pdo_mysql` und `mbstring`
+- MySQL 5.7+ oder MariaDB 10.3+
+- Gewöhnlicher Webspace (Apache) genügt – kein Shell-Zugang, kein Composer, kein Node.js
+- HTTPS wird dringend empfohlen
 
-**Voraussetzungen:** PHP 8.1 oder neuer mit `pdo_mysql` und `mbstring` sowie MySQL 5.7+ oder MariaDB 10.3+. HTTPS ist dringend empfohlen. Composer, Node oder Shell-Zugriff sind nicht nötig.
+## Installation (Webspace)
 
-**Aktualisieren:** die neuen Dateien über die alten hochladen, dabei `config.php` behalten und `install.php` nicht erneut hochladen. Die Datenbank wird bei der nächsten Anmeldung automatisch angepasst.
+1. Das aktuelle Release-ZIP von der Releases-Seite herunterladen und entpacken.
+2. Den Ordner per FTP hochladen, z. B. nach `https://ihre-domain.de/anouk/`. Die `.htaccess`-Dateien mit hochladen (es sind versteckte Dateien).
+3. Im Kundenmenü des Providers eine leere MySQL-Datenbank anlegen und Host, Name, Benutzer und Passwort notieren. Die Datenbank darf auch Tabellen anderer Software enthalten.
+4. `https://ihre-domain.de/anouk/install.php` aufrufen und den Schritten folgen:
+   - Datenbankdaten eintragen und **Verbindung testen** – die Seite meldet, ob die Verbindung steht, ob der Benutzer Tabellen anlegen darf und ob schon eine ANOUK-Datenbank existiert;
+   - das **Tabellenpräfix** `anouk_` beibehalten, außer es sollen zwei ANOUK-Installationen in einer Datenbank laufen;
+   - Name, E-Mail-Adresse und Passwort (mindestens 10 Zeichen) des Master-Admins eintragen und **Installieren** klicken;
+   - den **Notfallcode** von der Erfolgsseite notieren.
+5. `install.php` vom Server löschen (die Erfolgsseite hat dafür einen Knopf).
+6. Unter `https://ihre-domain.de/anouk/admin/` anmelden.
+
+Kann der Installer `config.php` nicht schreiben, zeigt er den Inhalt der Datei an; diese dann per FTP neben `index.php` anlegen. Nach der Installation sperrt die Datei `data/install.lock` den Installer.
+
+### nginx
+
+nginx beachtet keine `.htaccess`-Dateien. Diese Regeln in den Server-Block aufnehmen (`/anouk/` an den eigenen Ordner anpassen):
+
+```
+location ~ ^/anouk/(src|sql|data|lang|tests)/ { deny all; }
+location ~ ^/anouk/(config\.php|.*\.md|.*\.cff|LICENSE)$ { deny all; }
+```
+
+Auch ohne diese Regeln geben `config.php` und die PHP-Dateien in `src/` beim direkten Aufruf nichts aus.
 
 ### Konfiguration zurücksetzen
 
-Um ANOUK neu einzurichten, z. B. nach einem geänderten Datenbankpasswort, wird `config.php` gelöscht. Studien, Konten und Antworten bleiben in der Datenbank; der Installer erkennt die bestehende Datenbank.
+Um ANOUK neu einzurichten, z. B. nach einer Änderung des Datenbankpassworts, wird `config.php` gelöscht. Studien, Konten und Antworten bleiben in der Datenbank; der Installer erkennt die bestehende Datenbank.
 
-- **Als Administrator:** *System → config.php löschen* (dafür muss `install.php` auf dem Server liegen).
-- **Ohne Anmeldung**, etwa wenn die Datenbank nicht mehr erreichbar ist: `install.php` aufrufen und den Notfall-Code eingeben.
-- Oder die Datei per FTP löschen.
+- **Als Master-Admin:** *System → config.php löschen* (dafür muss `install.php` auf dem Server liegen).
+- **Ohne Anmeldung**, z. B. wenn die Datenbank nicht mehr erreichbar ist: `install.php` aufrufen und den Notfallcode eingeben.
+- **Per FTP:** `config.php` und `data/install.lock` löschen.
 
-## 2. Studien
+## Aktualisieren
+
+1. Datenbank (z. B. mit phpMyAdmin des Providers) und `config.php` sichern.
+2. Die neuen Dateien hochladen. `config.php` und den Ordner `data/` nicht überschreiben und `install.php` nicht erneut hochladen.
+3. Als Master-Admin anmelden. Ändert die neue Version die Datenbank, bietet die Seite *System* **Datenbank aktualisieren** an. Bis dahin sehen Befragte einen Wartungshinweis; deshalb direkt nach dem Hochladen aktualisieren.
+
+**Von Version 1.0.x:** Die Verwaltung liegt jetzt unter `admin/` (alte Lesezeichen werden weitergeleitet). Nach dem Hochladen die alten Ordner `app/` und `examples/` sowie die alten Dateien `assets/style.css`, `assets/admin.js`, `assets/survey.js`, `assets/favicon.svg` und `assets/fonts/` löschen.
+
+## Nutzung
+
+![Studienseite mit Feldstatus, Links und Export](docs/screenshots/study.png)
+
+### Studie anlegen
 
 **Studien → Neue Studie**
 
 - **Titel** erscheint nur in der Verwaltung.
-- **Kürzel für den Link** ergibt den Einstiegslink `index.php?s=kuerzel`. Es lässt sich später nicht ändern.
-- **Sprache der Probandenseiten:** Englisch oder Deutsch. Schaltflächen und Hinweise folgen dieser Sprache.
+- **Linkname** ergibt den Einstiegslink `index.php?s=linkname`. Er lässt sich später nicht ändern.
+- **Sprache der Befragtenseiten:** Englisch oder Deutsch.
 
-Eine Studie ist ein **Entwurf**, bis sie ins Feld geht. Nur im Entwurf lassen sich Attribute und Design ändern. **Im Feld** nimmt sie Probanden an, **geschlossen** nicht. Zurück in den Entwurf geht es, solange niemand geantwortet hat.
+Eine Studie ist ein **Entwurf**, bis sie ins Feld geht. Nur Entwürfe können Attribute und Design ändern. **Im Feld** nimmt sie Befragte an, **geschlossen** nicht mehr. Solange niemand geantwortet hat, kann eine Studie zurück in den Entwurf.
 
-**Einstellungen** einer Studie:
+**Einstellungen** einer Studie: Frage über jeder Aufgabe, Einleitung, **None-Option** („Keine davon“), zufällige Attributreihenfolge je Person, Rücksprung- und Fehler-URL (siehe unten), Freigabezeit für Versionen von Abbrechenden und Präfix für Test-IDs (Standard `test_`).
 
-- **Frage über jedem Task**, z. B. „Welche dieser Apps würden Sie nutzen?“. Leer: der Standardtext der Sprache.
-- **Instruktion:** reiner Text vor dem ersten Task.
-- **None-Option:** eine zusätzliche Wahl „Keine dieser Optionen“ unter den Alternativen.
-- **Zufällige Attributreihenfolge** je Proband (gleich für alle seine Tasks).
-- **Rücksprung-URL** und **Fehler-URL:** siehe Abschnitt 5.
-- **Freigabefrist:** nach wie vielen Minuten ohne Aktivität die Version eines Abbrechers an jemand anderen gehen kann.
-- **Präfix für Test-IDs** (Standard `test_`): siehe Abschnitt 5.
+### Attribute und Variablennamen
 
-## 3. Attribute und Choice-Sets
-
-### Attribute und Level
-
-Unter *Attribute und Level* ein Attribut pro Zeile eintragen, die Level durch `|` getrennt:
+Unter *Attribute und Level* ein Attribut pro Zeile eintragen, die Level getrennt durch `|`:
 
 ```
-Preis: 249 € | 299 € | 349 €
-Marke: A | B | C
-Akkulaufzeit: 8 h | 10 h | 14 h
+Eigenanteil pro Monat: 0 € | 10 € | 25 €
+Speicherung der Daten: nur auf dem Smartphone | Server in Deutschland | Server in der EU
 ```
 
-Die Reihenfolge der Zeilen ist die Reihenfolge auf den Probandenseiten. Die Beschriftungen erscheinen genau so, wie sie hier stehen.
+Die Reihenfolge der Zeilen ist die Reihenfolge auf den Befragtenseiten; die Bezeichnungen erscheinen genau wie geschrieben.
+
+Darunter erhält jedes Attribut einen **Variablennamen**: den Spaltennamen in den Exporten und im R-Skript, z. B. `preis` für „Eigenanteil pro Monat“. ANOUK schlägt einen vor (Kleinbuchstaben, Unterstriche, keine Umlaute); er lässt sich jederzeit ändern, auch während der Feldphase.
+
+![Attribute mit Variablennamen](docs/screenshots/attributes.png)
 
 ### Choice-Sets mit cbcTools erstellen
 
-Unter *Design* erzeugt ANOUK ein R-Skript mit den Attributen und Leveln der Studie. Wählbar sind:
+Unter *Design* schreibt ANOUK ein R-Skript mit den Attributen und Leveln der Studie. Wählbar sind die `cbcTools`-Methode ohne Vorannahmen (`minoverlap`, empfohlen; `balanced`, `shortcut` oder `random`), die Zahl der Versionen, Sets je Version und Alternativen je Set sowie optional ein Seed. Das Skript in R ausführen (`cbcTools` ab 0.7: `install.packages("cbcTools")`) und die erzeugte CSV hochladen.
 
-- das **Verfahren** von `cbcTools`, das ohne Vorannahmen auskommt: `minoverlap` (empfohlen), `balanced`, `shortcut` oder `random`,
-- die Zahl der **Versionen** (verschiedene Fragebögen), **Sets je Version** und **Alternativen je Set**,
-- optional ein **Seed**, damit sich das Design reproduzieren lässt.
+Für D-effiziente Designs mit Vorannahmen das Skript auf `method = "cea"` oder `"modfed"` mit `cbc_priors()` umstellen. Keine „No choice“-Option in `cbcTools` anlegen, sondern die None-Option in ANOUK einschalten.
 
-Das Skript baut die Choice-Sets mit `cbc_profiles()` und `cbc_design()`, zeigt mit `cbc_inspect()` Levelbalance und Overlap und speichert eine CSV mit den Attributnamen und Level-Beschriftungen der Studie. Das Skript in R ausführen und die CSV unter *Design* hochladen. Voraussetzung ist `cbcTools` 0.7 oder neuer (`install.packages("cbcTools")`).
-
-Für D-effiziente Designs mit Vorannahmen das Skript auf `method = "cea"` oder `"modfed"` mit `cbc_priors()` umstellen. Ein „no choice“ bitte nicht in `cbcTools`, sondern als None-Option in ANOUK aktivieren. No-Choice-Zeilen in einer hochgeladenen Datei werden entfernt.
-
-**Beispiel:** der Ordner `examples/diga` enthält eine vollständige Studie zu Digitalen Gesundheitsanwendungen (DiGA) mit R-Skript und fertigem Design.
+**Beispiel:** `docs/examples/diga` enthält eine vollständige Studie zu Digitalen Gesundheitsanwendungen (DiGA) mit R-Skript und fertigem Design zum Ausprobieren.
 
 ### Design hochladen
 
-Die CSV-Datei hat eine Zeile je Version × Task × Alternative und eine Spalte je Attribut mit dem Level-Label:
+Die CSV-Datei hat eine Zeile je Version × Aufgabe × Alternative und eine Spalte je Attribut:
 
 ```
-version,task,alt,Preis,Marke
-1,1,1,299 €,A
-1,1,2,349 €,B
-1,2,1,249 €,C
+respID,qID,altID,preis,speicherung
+1,1,1,10 €,nur auf dem Smartphone
+1,1,2,25 €,Server in der EU
 ```
 
-- Spaltennamen wie `respID`, `qID` und `altID` aus `cbcTools` werden erkannt; `profileID`, `obsID`, `blockID` und `choice` werden ignoriert. Weitere Spalten lassen sich im Upload-Formular zuordnen oder ausschließen.
-- Komma, Semikolon und Tabulator werden als Trennzeichen erkannt; als Windows-1252 gespeicherte Dateien werden umgewandelt.
-- Die Nummerierung darf beliebig beginnen; ANOUK nummeriert Versionen, Tasks und Alternativen ab 1.
-- Sind noch keine Attribute definiert, werden sie aus der Datei übernommen.
+- Spalten werden über die Bezeichnung oder den Variablennamen des Attributs zugeordnet. Sind noch keine Attribute angelegt, werden sie aus der Datei übernommen.
+- `respID`, `qID` und `altID` aus `cbcTools` (oder `version`, `task`, `alt`) werden erkannt; `profileID`, `obsID`, `blockID` und `choice` werden ignoriert; No-Choice-Zeilen entfernt.
+- Komma, Semikolon und Tabulator werden erkannt; als Windows-1252 gespeicherte Dateien umgewandelt; die Nummerierung beginnt danach bei 1.
 
-Gespeichert wird eine Datei nur, wenn alle Zeilen gültig sind. Sonst listet die Seite die Probleme mit Zeilennummer auf: unbekannte Level, fehlende Werte, unterschiedliche Zahl von Tasks oder Alternativen, identische Alternativen in einem Task, wiederholte Tasks in einer Version.
+Eine Datei wird nur gespeichert, wenn jede Zeile gültig ist. Sonst listet die Seite die Probleme mit Zeilennummern auf (unbekannte Level, fehlende Werte, ungleiche Zahl von Aufgaben oder Alternativen, identische Alternativen, wiederholte Aufgaben). Die Studienseite zeigt Levelhäufigkeiten und Overlap des gespeicherten Designs. Für schnelle Tests ohne R kann ANOUK auch selbst ein einfaches Design erzeugen.
 
-Die Studienseite zeigt eine **Design-Diagnose** (Levelhäufigkeiten und Anteil der Tasks mit wiederholtem Level) und bietet das gespeicherte Design als CSV zum Herunterladen an.
+### Befragte
 
-**Ohne R:** für Tests kann ANOUK auch selbst ein einfaches Design erzeugen (zufällig oder mit minimalem Overlap).
+Jede befragte Person erhält die Version mit den wenigsten abgeschlossenen (und kürzlich aktiven) Befragten; Test-IDs zählen nicht. Antworten werden sofort gespeichert; wer mit derselben ID zurückkommt, macht bei der nächsten offenen Aufgabe weiter, und eine abgeschlossene ID wird direkt zurückgeschickt. Nach der ersten Seite steckt die ID in einem Sitzungscookie und verschwindet aus der Adresszeile.
 
-## 4. Probanden
+*Studien → Probanden* listet alle Probanden mit Status und Antworten und erlaubt, einzelne zu löschen. *Vorschau* auf der Studienseite spielt die Studie durch, ohne etwas zu speichern.
 
-Jeder Proband erhält eine Version des Designs: die Version mit den wenigsten abgeschlossenen (und innerhalb der Freigabefrist aktiven) Probanden. Test-IDs zählen nicht mit. Jede Antwort wird sofort gespeichert; wer abbricht und mit derselben ID zurückkommt, macht beim nächsten offenen Task weiter. Eine abgeschlossene ID wird direkt zu LimeSurvey zurückgeschickt.
+### Anbindung an LimeSurvey (und andere Umfragetools)
 
-**Die ID verschwindet aus der Adresszeile:** der erste Aufruf mit `?id=…` setzt ein Sitzungscookie mit einem zufälligen Token und leitet auf eine Adresse ohne ID um; alle weiteren Seiten arbeiten mit dem Cookie. Die ID steht damit weder in der Adresszeile noch im Browserverlauf. Nimmt der Browser das Cookie nicht an, erklärt die Seite, dass Cookies nötig sind.
-
-**Probandenseite:** *Studien → Probanden* listet die Probanden der eigenen Studien mit Studie, Version, Status (abgeschlossen, läuft, abgebrochen), Zahl der Antworten und Zeitpunkten. Gefiltert wird nach Studie und Status, gesucht nach der ID. Die Detailseite zeigt jeden Task mit den Alternativen und der Wahl. **Proband löschen** entfernt einen Probanden mit allen Antworten, z. B. auf eine Löschanfrage hin; seine Version wird wieder frei.
-
-**Alle Antworten löschen:** auf der Studienseite entfernt *Alle Antworten löschen* alle Probanden und Antworten der Studie, z. B. nach einem Testlauf. Studie, Einstellungen und Design bleiben erhalten.
-
-Die Seiten zeigen einen Task pro Seite mit den Alternativen nebeneinander (auf dem Smartphone untereinander), einem Fortschrittslineal und, falls eingestellt, der None-Option. ANOUK speichert zu jeder Antwort die Antwortzeit in Millisekunden und die Fensterbreite.
-
-**Vorschau:** die Schaltfläche *Vorschau* auf der Studienseite spielt die Studie durch, ohne etwas zu speichern.
-
-## 5. Anbindung an LimeSurvey
-
-### Von LimeSurvey zu ANOUK
-
-Die Studienseite zeigt den Einstiegslink, z. B.
+Die Studienseite zeigt den **Einstiegslink**:
 
 ```
-https://example.org/anouk/index.php?s=akku-studie&id={TOKEN}
+https://ihre-domain.de/anouk/index.php?s=diga&id=…
 ```
 
-LimeSurvey ersetzt `{TOKEN}` durch den Token des Teilnehmers. Die Probanden sollten LimeSurvey auf einer Fragenseite verlassen (nicht über die End-URL, die die Antwort abschließt), z. B. mit einem Link oder einer automatischen Weiterleitung in einer Frage vom Typ *Textanzeige*:
+In den Studieneinstellungen führt die **Rücksprung-URL** zurück in die Umfrage. Platzhalter: `{ID}` = ID der befragten Person, `{STATUS}` = `complete`. Die optionale **Fehler-URL** gilt, wenn die Studie nicht im Feld ist (`{STATUS}` = `closed`) oder die ID ungültig ist (`invalid_id`).
+
+**IDs mit dem Test-Präfix** (Standard `test_`) laufen normal durch, zählen aber nicht für die Versionsvergabe und fehlen im Export, sofern nicht ausgewählt.
+
+> Vor der Feldphase die ganze Kette mit einer Test-ID durchspielen – Umfragetools ändern ihre Einstellungen von Version zu Version.
+
+**LimeSurvey.** Die Umfrage mit Teilnehmertabelle (Tokens) betreiben und die token-basierte Antwortpersistenz einschalten, damit LimeSurvey die begonnene Antwort fortsetzt. Befragte von einer Frageseite aus zu ANOUK schicken (nicht über die End-URL, die die Antwort abschließt), z. B. mit einem Link in einer Frage vom Typ *Textanzeige*:
 
 ```
-<script>window.location.href = 'https://example.org/anouk/index.php?s=akku-studie&id={TOKEN}';</script>
+Einstiegslink:  https://ihre-domain.de/anouk/index.php?s=diga&id={TOKEN}
+Rücksprung-URL: https://umfrage.example.org/index.php/123456?token={ID}&lang=de
 ```
 
-Je nach Einstellung entfernt der XSS-Filter von LimeSurvey Skripte aus Fragetexten; dann einen gewöhnlichen Link verwenden.
-
-### Von ANOUK zurück zu LimeSurvey
-
-In den Einstellungen der Studie eine **Rücksprung-URL** eintragen, z. B.
+**SoSci Survey.** Auf der Seite vor den Choice-Tasks PHP-Code einfügen, der mit dem Interview-Token zu ANOUK weiterleitet; das zweite Argument `true` hält das Interview offen:
 
 ```
-https://umfrage.example.org/index.php/123456?token={id}&lang=de
+redirect('https://ihre-domain.de/anouk/index.php?s=diga&id=' . caseToken(), true);
 ```
 
-`{id}` wird durch die ID des Probanden ersetzt, `{status}` durch `complete`. Für die Rückkehr in dieselbe Umfrage diese mit einer Teilnehmertabelle (Tokens) betreiben und die token-basierte Antwortpersistenz einschalten, damit LimeSurvey die angefangene Antwort fortsetzt. **Bitte vor der Feldphase mit der eigenen LimeSurvey-Version testen.**
+```
+Rücksprung-URL: https://www.soscisurvey.de/IHR-PROJEKT/?i={ID}
+```
 
-Eine optionale **Fehler-URL** wird genutzt, wenn die Studie nicht im Feld ist (`{status}` = `closed`) oder die ID ungültig ist (`invalid_id`).
+**Unipark (EFS Survey).** Im Primärprojekt eine Seite vom Typ *Externer Befragungsstart* (External survey start) mit dem Einstiegslink `https://ihre-domain.de/anouk/index.php?s=diga` als Ziel anlegen und *Rückkehrticket anhängen* aktivieren. EFS übergibt sein Ticket als `tic`; ANOUK akzeptiert `tic` als ID. Als Rücksprung-URL die Projektadresse mit `ospe.php` verwenden:
 
-**Test-IDs:** IDs, die mit dem Test-Präfix beginnen (Standard `test_`), laufen normal durch, zählen aber nicht für die Versionsvergabe und fehlen im Export, wenn sie nicht ausdrücklich gewählt werden.
+```
+Rücksprung-URL: https://ww3.unipark.de/uc/IHR-PROJEKT/ospe.php?return_tic={ID}
+```
 
-## 6. Export
+**Qualtrics.** Qualtrics kann eine abgeschlossene Antwort nicht fortsetzen; daher die Umfrage in zwei Teile trennen. Teil 1 endet mit *Redirect to a URL* (End-of-Survey-Element; braucht eine lizenzierte Version), Teil 2 übernimmt `id` als Embedded Data im Survey Flow:
 
-Die Studienseite bietet das **Langformat** mit einer Zeile je Proband × Task × Alternative:
+```
+Ende von Teil 1: https://ihre-domain.de/anouk/index.php?s=diga&id=${e://Field/ResponseID}
+Rücksprung-URL:  https://IHRE-ORG.qualtrics.com/jfe/form/SV_TEIL2?id={ID}
+```
+
+Die kleingeschriebenen Platzhalter `{id}` und `{status}` aus ANOUK 1.0 funktionieren weiterhin.
+
+### Daten exportieren
+
+Die Studienseite bietet drei CSV-Dateien an, jeweils nur für Abschließende oder einschließlich Abbrechender, mit oder ohne Test-IDs, im **R-Stil** (Komma) oder **deutschen Excel-Stil** (Semikolon, UTF-8 mit BOM). Alle Zeiten sind UTC im Format ISO 8601 (`2026-11-19T08:01:00Z`).
+
+**Langformat** – eine Zeile je ID × Aufgabe × Alternative:
 
 | Spalte | Inhalt |
 |---|---|
-| `id` | ID aus LimeSurvey |
-| `obs_id` | laufende Nummer je Proband × Task |
+| `id` | ID aus dem Umfragetool |
+| `obs_id` | laufende Nummer je ID × Aufgabe (die Wahlsituation) |
 | `version`, `task`, `alt` | Position im Design |
-| Attributspalten | angezeigtes Level |
-| `none` | nur mit None-Option: 1 in der zusätzlichen Zeile für „keine davon“ (`alt` = J + 1, Attribute leer) |
+| eine Spalte je Attribut | das gezeigte Level, benannt nach dem Variablennamen |
+| `none` | nur mit None-Option: 1 in der Zusatzzeile für „keine davon“ (`alt` = J + 1, Attribute leer) |
 | `choice` | 1 = gewählt, sonst 0 |
-| `rt_ms` | Antwortzeit des Tasks in Millisekunden (im Browser gemessen) |
-| `screen_w` | Fensterbreite in Pixeln |
-| `answered_at_utc` | Zeitpunkt der Antwort (UTC) |
-| `status`, `is_test` | Status des Probanden, Test-ID ja/nein |
+| `rt_ms`, `screen_w` | Antwortzeit in Millisekunden und Fensterbreite in Pixeln |
+| `answered_at` | Zeitpunkt der Antwort |
+| `status`, `is_test` | `active` oder `complete`; Test-ID 1/0 |
 
-Dateiformate: **R/SPSS/Python** (Komma) oder **deutsches Excel** (Semikolon, UTF-8 mit BOM). Beispiel mit `logitr`:
+**Breitformat** – eine Zeile je ID, zum Zusammenführen mit den Umfragedaten: `id`, `version`, `status`, `is_test`, `n_answered`, `started_at`, `completed_at`, dann `choice_t01`, `choice_t02`, … (gewählte Alternative; 0 = None-Option, leer = nicht beantwortet) und `rt_t01`, `rt_t02`, … (Antwortzeiten in ms).
 
+**Codebuch** – eine Zeile je Spalte beider Formate mit `variable`, `label`, `type` und `values` (bei Attributen: die Level in der festgelegten Reihenfolge).
+
+### Daten in R einlesen
+
+```r
+d <- read.csv("anouk_diga_long_20261119.csv", encoding = "UTF-8")
 ```
+
+`docs/r/read_anouk.R` liest alle Exporte in beiden Stilen, wandelt die Zeiten um und macht mit dem Codebuch aus den Attributen Faktoren in der festgelegten Levelreihenfolge. Beispiel mit `logitr`:
+
+```r
+source("read_anouk.R")
+d <- read_anouk("anouk_diga_long_20261119.csv", codebook = "anouk_diga_codebook_20261119.csv")
+
 library(logitr)
-d <- read.csv("anouk_akku-studie_long_20261116.csv", fileEncoding = "UTF-8")
 m <- logitr(data = d, outcome = "choice", obsID = "obs_id",
-            pars = c("Preis", "Marke", "Akkulaufzeit"))
+            pars = c("wirksamkeitsnachweis", "begleitung_durch_fachperson",
+                     "zeitaufwand_pro_woche", "speicherung_der_daten",
+                     "eigenanteil_pro_monat", "none"))
 summary(m)
+
+w <- read_anouk("anouk_diga_wide_20261119.csv")              # eine Zeile je ID
+alle <- merge(umfragedaten, w, by.x = "token", by.y = "id")  # mit den LimeSurvey-Daten
 ```
 
-Mit None-Option die leeren Attributwerte der `none`-Zeilen vor der Schätzung passend kodieren, z. B. mit `none` als eigenem Parameter.
+Mit None-Option füllt `read_anouk()` die leeren Attributzellen der None-Zeilen mit dem Referenzlevel, sodass `none` als eigener Parameter geschätzt wird. Ohne None-Option `none` weglassen.
 
-Die Schätzung individueller Teilnutzenwerte (Hierarchical Bayes) und ein Weitexport mit einer Zeile je Proband folgen in der nächsten Version – mit etablierten R-Paketen, deren Ergebnisse ANOUK wieder einliest.
+## Konten und Rollen
 
-## 7. Konten, Rollen und Sprachen
-
-| | Administrator | Projektleitung |
+| | Master-Admin | Projektleitung |
 |---|---|---|
 | Studien anlegen, Designs erstellen und hochladen, exportieren | ja | ja |
 | Studien anderer Konten | alle | keine |
-| Konten anlegen, bearbeiten, deaktivieren und löschen, Startpasswörter setzen | ja | nein |
-| Systemseite (Installer, Konfiguration) | ja | nein |
+| Konten anlegen, bearbeiten, deaktivieren und löschen | ja | nein |
+| Seite System (Datenbank-Update, Installer, Konfiguration) | ja | nein |
 
-**Projektleitung anlegen:** unter *Konten* trägt der Administrator Name, E-Mail-Adresse, Rolle und Sprache ein. ANOUK erzeugt ein Startpasswort, das einmal angezeigt wird; dieses an die Person weitergeben. Bei der ersten Anmeldung muss die Person ein eigenes Passwort wählen. Die Anwendung verschickt keine E-Mails; wer sein Passwort vergisst, erhält vom Administrator ein neues Startpasswort.
+Unter *Konten* legt der Master-Admin Projektleitungen an; ANOUK zeigt ein Startpasswort einmal an, das die Person bei der ersten Anmeldung ändern muss. ANOUK verschickt keine E-Mails; bei vergessenem Passwort erzeugt der Master-Admin ein neues Startpasswort. Beim Löschen eines Kontos werden dessen Studien zuvor einem anderen Konto übertragen. Ruft eine Projektleitung eine Studie eines anderen Kontos auf, erhält sie „nicht gefunden“.
 
-**Bearbeiten und Ausscheiden:** ein Klick auf ein Konto öffnet dessen Seite. Dort ändert der Administrator Name, E-Mail-Adresse, Rolle und Sprache, deaktiviert das Konto (die Person kann sich nicht mehr anmelden, alles andere bleibt) oder löscht es. Gehören dem Konto Studien, werden sie vorher an ein anderes Konto übertragen; die Ergebnisse bleiben bei den Studien. Der letzte aktive Administrator kann weder gelöscht noch deaktiviert noch zur Projektleitung gemacht werden.
+Nach fünf Fehlversuchen für dieselbe E-Mail-Adresse von derselben Verbindung muss die Person 1, 2, 4, 8 und dann 15 Minuten bis zum nächsten Versuch warten.
 
-**Trennung:** öffnet eine Projektleitung die Studie eines anderen Kontos über deren Adresse, erhält sie „nicht gefunden“.
+## Datenschutz
 
-**Sprachen:** die Verwaltung folgt zunächst der Browsersprache; im Menü unten links lässt sich die Sprache umstellen, die Wahl wird mit dem Konto gespeichert. Die Sprache der Probandenseiten wird je Studie eingestellt. Die Texte stehen in `app/lang/de.json` (Verwaltung, Schlüssel = englischer Text) und `app/Survey.php` (Probandenseiten). Eine weitere Sprache braucht eine Datei `app/lang/xx.json` und einen Eintrag in `app/I18n.php`; `php tests/i18n.php --keys` listet alle Texte auf.
+**Was ANOUK speichert:** die vom Umfragetool übergebene ID, die zugewiesene Version, die Antworten mit Antwortzeit und Fensterbreite sowie Zeitstempel.
 
-## 8. Datenschutz
+**Was ANOUK nicht speichert:** IP-Adressen, Browserangaben, Namen oder E-Mail-Adressen der Befragten. Einzige Ausnahme ist die Anmeldung zur Verwaltung: Um das Erraten von Passwörtern zu bremsen, werden Fehlversuche je gesalzenem Hash aus E-Mail-Adresse und IP-Adresse gezählt. Die Hashes lassen sich nicht in Adressen zurückverwandeln und werden nach 24 Stunden gelöscht.
 
-**Was ANOUK speichert:** die von LimeSurvey übergebene ID, die zugewiesene Version, die Antworten mit Antwortzeit und Fensterbreite sowie Zeitstempel.
+**Cookies:** je Studie ein Sitzungscookie mit einem zufälligen Token sowie das PHP-Sitzungscookie (beide HttpOnly, SameSite=Lax, werden beim Schließen des Browsers gelöscht). Sie sind technisch notwendig (§ 25 Abs. 2 Nr. 2 TDDDG). Die Datenbank speichert nur einen SHA-256-Hash des Tokens.
 
-**Was nicht gespeichert wird:** IP-Adressen, Browserdaten, Namen oder E-Mail-Adressen der Probanden.
+**Keine Dritten:** Schriften und Skripte gehören zu ANOUK; nichts wird von fremden Servern geladen, und `Referrer-Policy: no-referrer` verhindert die Weitergabe von Adressen.
 
-**Cookies:** je Studie ein Sitzungscookie (`anouk_s{id}`) mit einem zufälligen Token sowie das PHP-Sitzungscookie (beide HttpOnly, SameSite=Lax, werden beim Schließen des Browsers gelöscht). Sie sind technisch notwendig (§ 25 Abs. 2 Nr. 2 TDDDG). Die Datenbank speichert nur einen SHA-256-Hash des Tokens.
+**Hosting:** Die Zugriffsprotokolle des Providers enthalten den Einstiegslink samt ID. Den Auftragsverarbeitungsvertrag und die Speicherdauer der Protokolle in der Datenschutzdokumentation festhalten.
 
-**ID in der Adresse:** nach der ersten Seite steht die ID weder in der Adresszeile noch im Browserverlauf.
+**Löschen:** Unter *Probanden* eine Person über ihre ID suchen und *Proband löschen*. *Alle Antworten löschen* leert eine Studie; *Studie löschen* entfernt sie samt Design und Antworten endgültig.
 
-**Keine Dritten:** Schriften und Skripte sind Teil der Anwendung. Nichts wird von anderen Servern geladen, und `Referrer-Policy: no-referrer` verhindert, dass Adressen weitergegeben werden.
+## Sicherheit
 
-**Hosting:** die Zugriffsprotokolle des Providers enthalten den Einstiegslink samt ID. In der Datenschutzdokumentation den Auftragsverarbeitungsvertrag mit dem Provider und dessen Speicherdauer für Protokolle festhalten.
-
-**Löschen:** unter *Probanden* einen Probanden über seine ID finden und *Proband löschen* wählen. *Alle Antworten löschen* leert eine Studie, *Studie löschen* entfernt sie mit Design und allen Antworten endgültig.
-
-## 9. Sicherheit
-
-- `install.php` nach der Installation löschen.
-- `app/`, `sql/`, `tests/` und `config.php` werden durch `.htaccess`-Dateien gesperrt. Auf Servern ohne `.htaccess` (nginx) diese Pfade in der Serverkonfiguration sperren, z. B. `location ~ ^/anouk/(app|sql|tests)/ { deny all; }`. Auch ohne Sperre geben `config.php`, die PHP-Dateien in `app/` und die Tests beim direkten Aufruf nichts aus.
-- Passwörter werden als bcrypt-Hashes gespeichert. Alle Formulare der Verwaltung sind gegen Cross-Site-Requests geschützt, und Sitzungen der Verwaltung enden nach vier Stunden ohne Aktivität (`admin_idle_minutes` in `config.php`). Wird ein Passwort geändert oder zurückgesetzt, enden alle anderen Sitzungen dieses Kontos.
-- Nach fehlgeschlagenen Anmeldungen gibt es keine Sperre. Bitte lange Passwörter verwenden; eine Sperre lässt sich mit dem Webserver oder den Werkzeugen des Providers vor ANOUK schalten.
-- Wer den Einstiegslink einer Studie im Feld kennt, kann sie mit einer erfundenen ID starten. Solche Zeilen sind erkennbar, weil ihre ID nicht in der LimeSurvey-Teilnehmerliste steht; beim Mergen entfernen.
-- Der Export für Excel setzt vor Zellen, die mit `=`, `+`, `-` oder `@` beginnen, einen Apostroph, damit eine Tabellenkalkulation sie anzeigt und nicht als Formel ausführt. Der Export für R bleibt unverändert.
-- Eine Content-Security-Policy verbietet eingebettete Skripte und alles von fremden Servern; Seiten werden nicht zwischengespeichert.
+- `install.php` nach der Installation löschen; `data/install.lock` sperrt den Installer in jedem Fall.
+- `src/`, `sql/`, `data/`, `lang/`, `tests/` und `config.php` sind durch `.htaccess`-Dateien gesperrt (nginx: siehe oben).
+- Passwörter werden als bcrypt-Hash gespeichert; Verwaltungsformulare sind gegen Cross-Site-Requests geschützt; Sitzungen in der Verwaltung enden nach vier Stunden ohne Aktivität (`admin_idle_minutes` in `config.php`).
+- Wer den Einstiegslink einer Studie im Feld kennt, kann sie mit einer erfundenen ID starten. Solche Zeilen sind daran erkennbar, dass ihre ID nicht in der Teilnehmerliste der Umfrage steht; beim Zusammenführen entfernen.
+- Der Export im Excel-Stil setzt vor Zellen, die mit `=`, `+`, `-` oder `@` beginnen, ein Apostroph, damit eine Tabellenkalkulation sie anzeigt statt ausführt. Der R-Stil bleibt unverändert.
+- Eine Content-Security-Policy verbietet Inline-Skripte und alles von fremden Servern.
 - Bei der Installation „Immer HTTPS verwenden“ ankreuzen (`force_https` in `config.php`).
 
-## 10. Probleme
+## Sprachen
+
+Englisch und Deutsch sind enthalten, für die Verwaltung und die Befragtenseiten. Die Verwaltung folgt zunächst der Browsersprache; im Menü lässt sie sich umschalten, die Wahl wird im Konto gespeichert. Die Sprache der Befragtenseiten wird je Studie festgelegt.
+
+Für eine weitere Sprache `lang/en.php` z. B. nach `lang/fr.php` kopieren, `'_name' => 'Français'` setzen und die Texte auf der rechten Seite übersetzen. ANOUK bietet jede Datei in `lang/` automatisch an. `php tests/i18n.php` listet fehlende Übersetzungen.
+
+## Fehlerbehebung
 
 | Problem | Lösung |
 |---|---|
-| „Datenbank nicht erreichbar“ | Zugangsdaten in `config.php` prüfen oder die Konfiguration zurücksetzen (Abschnitt 1) |
+| „Datenbank nicht erreichbar“ | Zugangsdaten in `config.php` prüfen oder die Konfiguration zurücksetzen (siehe oben) |
+| Befragte sehen „wird gerade aktualisiert“ | Als Master-Admin anmelden und unter *System* auf *Datenbank aktualisieren* klicken |
+| „Installer gesperrt“ | `data/install.lock` per FTP löschen, wenn wirklich neu installiert werden soll |
 | „Das Formular ist abgelaufen“ | Cookies sind blockiert oder die Seite war zu lange offen: neu laden |
 | Upload scheitert ohne Meldung | Die Datei überschreitet `upload_max_filesize` des Providers |
-| Umlaute sind verstümmelt | Die CSV als „CSV UTF-8“ speichern |
+| Umlaute sind verstümmelt | CSV als „CSV UTF-8“ speichern |
 | PHP-Fehler anzeigen | Vorübergehend `'debug' => true` in `config.php` setzen |
 
-## 11. Entwicklung und Tests
+## Entwicklung und Tests
 
-Die Tests laufen mit SQLite ohne MySQL-Server:
-
-```
-php tests/run.php      # Logik: Parser, Generator, Prüfung, Versionsvergabe
-php tests/i18n.php     # jeder Text hat eine deutsche Übersetzung
-bash tests/e2e.sh      # kompletter Ablauf über HTTP (PHP-Server + Python 3)
-```
-
-## Dateien
+Die Tests nutzen SQLite und brauchen keinen MySQL-Server:
 
 ```
-index.php            Einstieg (Verwaltung und Probandenseiten)
-install.php          Installer (nach Gebrauch löschen)
-app/                 Logik und Templates (per .htaccess gesperrt)
-app/lang/de.json     deutsche Texte der Verwaltung
-assets/              Stylesheet, Schriften, Skripte, Icon
-examples/diga/       Beispielstudie mit cbcTools-Skript und Design
-sql/                 MySQL-Schema
-tests/               Tests mit SQLite
-README.de.md         dieser Text; README.md auf Englisch
+php tests/run.php      # Logik: Parser, Generator, Exporte, Migrationen, Drosselung
+php tests/i18n.php     # jeder Text steht in jeder Sprachdatei
+bash tests/e2e.sh      # kompletter Durchlauf über HTTP (PHP-Server + Python 3)
 ```
 
-Die Gestaltung der Oberfläche stammt aus dem Schwesterprojekt JUST-CAT (adaptive Tests für LimeSurvey).
+```
+index.php        Befragtenseiten (Einstiegslink)
+admin/           Verwaltung
+install.php      Installer (nach Gebrauch löschen)
+src/             Logik und Vorlagen (gesperrt)
+lang/            Sprachdateien
+sql/             Datenbankschema und Migrationen (gesperrt)
+data/            Sperrdatei (gesperrt)
+assets/          Stylesheet, Schriften, Skripte, Icon
+docs/            Beispielstudie, R-Funktion, Screenshots
+tests/           Tests mit SQLite
+```
+
+Das Layout stammt aus dem Schwesterprojekt [JUST-CAT](https://github.com/gerhi/just-cat) (adaptive Tests für LimeSurvey). Änderungen stehen in `CHANGELOG.md`.
+
+## Zitieren
+
+Siehe `CITATION.cff` oder den Knopf „Cite this repository“ auf GitHub.
 
 ## Lizenz
 
-MIT, siehe `LICENSE`. Die mitgelieferten Schriften (Instrument Sans, IBM Plex Serif) stehen unter der SIL Open Font License 1.1 (`assets/fonts`).
+MIT – siehe `LICENSE`. Die mitgelieferten Schriften (Instrument Sans, IBM Plex Serif) stehen unter der SIL Open Font License 1.1 (`assets/css/fonts`).
+
+## Kontakt
+
+Gerrit Hirschfeld, Hochschule Bielefeld (HSBI) – Issues und Pull Requests willkommen.

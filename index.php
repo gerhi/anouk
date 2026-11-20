@@ -1,17 +1,22 @@
 <?php
 /**
  * ANOUK – Auswahlbasierte Nutzenmessung: Online-Umsetzung & Kalkulation
- * Front controller.
- *   index.php?s=<slug>&id=<id>   respondent pages (from LimeSurvey)
- *   index.php?r=<route>          admin area
+ * Entry point for respondents:  index.php?s=<slug>&id=<id>
+ * The admin area lives in admin/; requests without a study are sent there.
  */
 declare(strict_types=1);
 
-require __DIR__ . '/app/bootstrap.php';
-require __DIR__ . '/app/Admin.php';
+require __DIR__ . '/src/bootstrap.php';
 
 if (!anouk_config()) {
     header('Location: install.php');
+    exit;
+}
+
+if (!isset($_GET['s'])) {
+    // Admin addresses of version 1.0 (index.php?r=…) keep working.
+    $query = isset($_GET['r']) ? '?' . http_build_query($_GET) : '';
+    header('Location: ' . admin_path() . $query, true, 302);
     exit;
 }
 
@@ -24,26 +29,9 @@ anouk_start_session();
 anouk_security_headers();
 
 try {
-    Schema::ensure();
-    if (isset($_GET['s'])) {
-        Survey::handle();
-    } else {
-        Admin::dispatch(is_string($_GET['r'] ?? null) ? $_GET['r'] : 'overview');
-    }
+    Survey::handle();
 } catch (DbConnectionError $e) {
-    error_log('ANOUK: ' . $e->getMessage());
-    i18n_init();
-    http_response_code(503);
-    render('message', [
-        'title'   => t('Database not reachable'),
-        'message' => t('ANOUK cannot reach the database configured in config.php. Check the access data. To set ANOUK up again, delete config.php by FTP or reset it in install.php with the emergency code.')
-            . (!empty(anouk_config()['debug']) ? ' (' . $e->getMessage() . ')' : ''),
-    ], 'layout_plain');
+    anouk_db_error($e);
 } catch (Throwable $e) {
-    error_log('ANOUK: ' . $e);
-    http_response_code(500);
-    echo '<!doctype html><meta charset="utf-8"><title>Error</title><p>An internal error occurred. / Ein interner Fehler ist aufgetreten.</p>';
-    if (!empty(anouk_config()['debug'])) {
-        echo '<pre>' . htmlspecialchars((string)$e) . '</pre>';
-    }
+    anouk_fatal($e);
 }
